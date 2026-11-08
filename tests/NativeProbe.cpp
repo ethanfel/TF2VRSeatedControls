@@ -6,6 +6,9 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <limits>
+
+extern "C" std::uint64_t SeatedClassify(const float*, const float*, const float*, unsigned, std::uintptr_t);
 
 static int checks = 0;
 static void Check(bool condition, const char* message) {
@@ -55,6 +58,41 @@ int main(int argc, char** argv) {
     Check(!Grenade(adapter.Classify(0, position, holsters, chest, 0, 100)), "native availability mask respected");
     position[0] = 100;
     Check(!Grenade(adapter.Classify(0, position, holsters, chest, 16, 100)), "distant hand remains unchanged");
+
+    alignas(16) const float hipAnchors[15] = {100,100,100, 100,100,100, 0,15,-30, 0,-15,-30, 1,0,0};
+    const auto originalAnchors = std::array<float,15>{100,100,100, 100,100,100, 0,15,-30, 0,-15,-30, 1,0,0};
+    alignas(16) float rightHip[4] = {0,-15,-30,0}, leftHip[4] = {0,15,-30,0};
+    alignas(16) const float farChest[4] = {100,100,200,0};
+    Check(Slot(adapter.classify(leftHip, hipAnchors, farChest, 2)) == 1, "native secondary belongs to left hip");
+    Check(Slot(adapter.classify(rightHip, hipAnchors, farChest, 2)) == -1, "native secondary is absent at right hip");
+    Check(Slot(adapter.Classify(1, rightHip, hipAnchors, farChest, 2, 200, true)) == 1, "right hand grabs copied secondary at right hip");
+    Check(Slot(adapter.Classify(0, rightHip, hipAnchors, farChest, 2, 200, true)) == 1, "left hand can also reach copied right holster");
+    Check(Slot(adapter.Classify(1, leftHip, hipAnchors, farChest, 2, 200, true)) == 1, "original left secondary remains available");
+    Check(!std::memcmp(hipAnchors, originalAnchors.data(), sizeof(hipAnchors)), "copy never edits native body anchors");
+    Check(Slot(adapter.Classify(1, rightHip, hipAnchors, farChest, 1, 200, true)) == -1, "copy cannot invent an unowned secondary");
+    Check(Slot(adapter.Classify(1, rightHip, hipAnchors, farChest, 10, 200, true)) == 3, "right-hip Arc Tool keeps priority");
+    Check(Grenade(adapter.Classify(1, rightHip, hipAnchors, rightHip, 18, 200, true)), "native grenade target keeps priority over copy");
+    Check(Slot(adapter.Classify(1, rightHip, hipAnchors, farChest, 2, 200, false)) == -1, "menus and inactive gameplay disable extra holster");
+    Check(Slot(adapter.Classify(-1, rightHip, hipAnchors, farChest, 2, 200, true)) == -1, "unrecognized native callers retain original result");
+    adapter.rightSecondaryHolster = false;
+    Check(Slot(adapter.Classify(1, rightHip, hipAnchors, farChest, 2, 200, true)) == -1, "copy can be disabled independently");
+    Check(Slot(adapter.Classify(1, leftHip, hipAnchors, farChest, 2, 200, true)) == 1, "disabling copy preserves original left holster");
+    adapter.rightSecondaryHolster = true;
+    rightHip[0] = 8; // Outside the native 18.5 cm forward half-extent.
+    Check(Slot(adapter.Classify(1, rightHip, hipAnchors, farChest, 2, 200, true)) == -1, "copy retains native holster bounds");
+    rightHip[0] = std::numeric_limits<float>::quiet_NaN();
+    Check(Slot(adapter.Classify(1, rightHip, hipAnchors, farChest, 2, 200, true)) == -1, "invalid hand position cannot select copied secondary");
+    rightHip[0] = 0;
+    float rotatedAnchors[15]; std::copy_n(hipAnchors,15,rotatedAnchors);
+    for (int i = 0; i < 12; i += 3) { rotatedAnchors[i] = 40-hipAnchors[i+1]; rotatedAnchors[i+1] = 70+hipAnchors[i]; }
+    rotatedAnchors[12] = 0; rotatedAnchors[13] = 1;
+    alignas(16) float rotatedHand[4] = {55,70,-30,0};
+    Check(Slot(adapter.Classify(1, rotatedHand, rotatedAnchors, farChest, 2, 200, true)) == 1, "copy follows translated and rotated body anchors");
+    HoldState drawn{{0,0},{0,0},-1,-1};
+    const bool drawAllowed[2] = {true,true}, drawTarget[2] = {false,true}, drawTransfer[2] = {false,false};
+    const float drawGrip[2] = {0,1}, drawThreshold[4] = {.75f,.25f,.75f,.25f};
+    Check(adapter.update(&drawn,drawAllowed,drawGrip,drawTarget,drawTransfer,drawThreshold,false) == 1 && drawn.hand == 1,
+          "copied target uses ordinary right-hand native weapon acquisition");
 
     const bool allowed[2] = {true,true}, targets[2] = {false,true}, transfer[2] = {false,false};
     const float grips[2] = {0,1}, thresholds[4] = {0.75f,0.25f,0.75f,0.25f};
@@ -147,6 +185,12 @@ int main(int argc, char** argv) {
     Check(VirtualProtect(shim, 4096, PAGE_EXECUTE_READ, &shimProtection) != 0, "make synthetic caller executable");
     FlushInstructionCache(GetCurrentProcess(), shim, sizeof(invoke));
     using Invoke = std::uint64_t (*)(const float*, const float*, const float*, unsigned, void*, ClassifyFn);
+    Check(Slot(reinterpret_cast<Invoke>(shim)(rightHip, hipAnchors, farChest, 2, returnSite, adapter.classify)) == 1,
+          "installed bridge and thunk expose secondary on right hip");
+    BridgeGameplay(false);
+    Check(Slot(reinterpret_cast<Invoke>(shim)(rightHip, hipAnchors, farChest, 2, returnSite, adapter.classify)) == -1,
+          "installed extra holster stops when gameplay loses focus");
+    BridgeGameplay(true);
     BridgeRequestSwap();
     Check(Slot(reinterpret_cast<Invoke>(shim)(position, holsters, chest, 3, returnSite, adapter.classify)) == 1,
           "actual bridge routes Y request to the verified right-hand caller");
@@ -196,7 +240,11 @@ int main(int argc, char** argv) {
     ReloadFixture restoredReload(8); restoredReload.Run(base,*profile);
     Check(!restoredReload.Inserted(), "shutdown restores original reload tolerances");
     ComfortConfig originalSettings; originalSettings.reloadDistance = originalSettings.reloadAngle = 1;
+    originalSettings.rightSecondaryHolster = false;
     Check(BridgeInitialize(1.75f, originalSettings), "reload assistance can be disabled independently");
+    BridgeGameplay(true);
+    Check(Slot(SeatedClassify(rightHip, hipAnchors, farChest, 2, reinterpret_cast<std::uintptr_t>(base + profile->rightReturn))) == -1,
+          "disabled setting reaches installed bridge without changing native right hip");
     ReloadFixture disabledReload(8); disabledReload.Run(base,*profile);
     Check(!disabledReload.Inserted(), "100 percent reload settings preserve original rejection");
     BridgeShutdown();

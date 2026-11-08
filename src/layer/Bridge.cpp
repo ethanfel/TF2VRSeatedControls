@@ -17,6 +17,7 @@ namespace {
 std::mutex mutex;
 Adapter adapter;
 std::atomic<bool> ready{false};
+std::atomic<bool> gameplayReady{false};
 std::atomic<std::uint64_t> requested{0};
 std::atomic<bool> cancelled{false};
 const Profile* profile = nullptr;
@@ -33,7 +34,7 @@ extern "C" std::uint64_t SeatedClassify(const float* position, const float* hols
     const auto request = requested.exchange(0);
     if (request && now >= request && now - request <= 250) adapter.Request(request);
     const int hand = caller == profile->leftReturn ? 0 : caller == profile->rightReturn ? 1 : -1;
-    return adapter.Classify(hand, position, holsters, chest, mask, now);
+    return adapter.Classify(hand, position, holsters, chest, mask, now, gameplayReady.load());
 }
 
 extern "C" int SeatedUpdate(HoldState* state, const bool* allowed, const float* grips, const bool* targets,
@@ -82,6 +83,7 @@ bool BridgeInitialize(float multiplier, const ComfortConfig& comfort) {
     adapter.grenade = reinterpret_cast<HoldState*>(base + profile->grenade);
     adapter.gunSlot = reinterpret_cast<int*>(base + profile->gun + 12);
     adapter.chestRadius = *reinterpret_cast<const float*>(base + profile->radius) * std::clamp(multiplier, 1.0f, 2.5f);
+    adapter.rightSecondaryHolster = comfort.rightSecondaryHolster;
     if (!ComfortInitialize(base, *profile, comfort)) {
         MH_RemoveHook(classify); MH_RemoveHook(update);
         Log("Comfort entry points could not be verified/installed; original controls retained.");
@@ -97,7 +99,8 @@ bool BridgeInitialize(float multiplier, const ComfortConfig& comfort) {
         return false;
     }
     ready = true;
-    Log("Adapter active for %s; chest pickup radius multiplier %.2f.", profile->name, multiplier);
+    Log("Adapter active for %s; chest pickup radius multiplier %.2f; right secondary holster %d.",
+        profile->name, multiplier, comfort.rightSecondaryHolster);
     return true;
 }
 
@@ -109,6 +112,7 @@ bool BridgeGameplay(bool active) {
         SIZE_T count = 0;
         allowed = ReadProcessMemory(GetCurrentProcess(), base + profile->dialogue, &dialogue, sizeof(dialogue), &count) && count == sizeof(dialogue) && !dialogue;
     }
+    gameplayReady = allowed;
     ComfortGameplay(allowed);
     return allowed;
 }
@@ -126,6 +130,7 @@ bool BridgeCanSwap() {
 void BridgeRequestSwap() { if (ready) requested = GetTickCount64(); }
 void BridgeCancel() { requested = 0; cancelled = true; }
 void BridgeShutdown() {
+    gameplayReady = false;
     BridgeCancel();
     if (!ready.exchange(false)) return;
     ComfortShutdown();

@@ -1,7 +1,7 @@
 {
   "Name": "Local.TF2VRSeatedControls",
   "Description": "Gameplay context for the separate TF2VR Seated Controls add-on.",
-  "Version": "0.2.3",
+  "Version": "0.3.0",
   "LoadPriority": 4,
   "Dependencies": { "TF2VR_COCKPIT": "Titanfall2VR.Cockpit" },
   "ConVars": [

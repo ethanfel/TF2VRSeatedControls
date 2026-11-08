@@ -4,6 +4,7 @@
 
 namespace seated {
 struct ComfortConfig {
+    bool rightSecondaryHolster = true;
     bool frontPouch = true;
     float pouchForward = 30.0f / 2.54f;
     float pouchDrop = 30.0f / 2.54f;

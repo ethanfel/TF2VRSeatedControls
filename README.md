@@ -2,12 +2,13 @@
 
 An unofficial seated-play add-on for CircuitLord's **Titanfall 2 VR** mod, designed around Quest controllers.
 
-**Experimental:** loading and native hooks have been verified in a live Proton session. The latest Y-button fix still needs in-headset confirmation.
+**Experimental:** loading and native hooks have been verified in a live Proton session. The latest Y-button fix and right-side secondary holster still need in-headset confirmation.
 
 ## Controls
 
 - **Tap Y:** swap primary/secondary while holding a weapon.
 - **Hold Y for 0.55 seconds:** open the menu with the default right-handed layout.
+- **Secondary holster:** grab the same secondary weapon from either hip. An owned Arc Tool keeps priority at the right hip. Disable the extra point with `[holsters] secondary_right=0`.
 - **Grenades:** larger chest pickup area, approximately 27 cm, with pickup feedback. Throwing still uses the original gesture.
 - **Magazines:** additional grab points in front of your lower torso, with vibration feedback and no visible pouch models.
 - **Manual reload:** more forgiving magazine alignment and insertion; reloading remains manual.

@@ -62,6 +62,7 @@ void Configure() {
     s.chestMultiplier = static_cast<float>(percent) / 100.0f;
     s.crouchEnabled = GetPrivateProfileIntW(L"controls", L"toggle_crouch", 1, path.c_str()) != 0;
     s.hapticsEnabled = GetPrivateProfileIntW(L"controls", L"pickup_haptics", 1, path.c_str()) != 0;
+    s.comfort.rightSecondaryHolster = GetPrivateProfileIntW(L"holsters", L"secondary_right", 1, path.c_str()) != 0;
     s.comfort.frontPouch = GetPrivateProfileIntW(L"reload", L"front_pouch", 1, path.c_str()) != 0;
     auto setting = [&](const wchar_t* key, int fallback, int low, int high) {
         return std::clamp(static_cast<int>(GetPrivateProfileIntW(L"reload", key, fallback, path.c_str())), low, high);

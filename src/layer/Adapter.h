@@ -1,5 +1,6 @@
 #pragma once
 #include "Controls.h"
+#include <array>
 #include <cstdint>
 
 namespace seated {
@@ -16,11 +17,12 @@ public:
     HoldState* grenade = nullptr;
     const int* gunSlot = nullptr;
     float chestRadius = 0;
+    bool rightSecondaryHolster = true;
 
     void Request(std::uint64_t now) { expires_ = now + 250; targetHand_ = -1; }
     void Cancel() { expires_ = 0; targetHand_ = -1; }
     std::uint64_t Classify(int hand, const float* position, const float* holsters,
-                           const float* chest, unsigned mask, std::uint64_t now) {
+                           const float* chest, unsigned mask, std::uint64_t now, bool gameplay = false) {
         auto result = classify(position, holsters, chest, mask);
         if (expires_ && now > expires_) Cancel();
         if (expires_ && hand == gun->hand && hand >= 0 && hand <= 1 &&
@@ -31,6 +33,17 @@ public:
                 return static_cast<std::uint64_t>(target);
             }
             Cancel(); // Never grab a world weapon or Arc Tool instead.
+        }
+        if (rightSecondaryHolster && gameplay && (hand == 0 || hand == 1) &&
+            Slot(result) == -1 && !Grenade(result) && (mask & 2u)) {
+            // The verified layout is two shoulders, left/right hips, forward
+            // (five vec3s). Reuse the native secondary test at the right hip.
+            // Keep all original targets, especially the right-hip Arc Tool.
+            std::array<float, 15> mirrored;
+            std::copy_n(holsters, mirrored.size(), mirrored.begin());
+            std::copy_n(holsters + 9, 3, mirrored.begin() + 6);
+            const auto candidate = classify(position, mirrored.data(), chest, 2u);
+            if (Slot(candidate) == 1 && !Grenade(candidate)) return candidate;
         }
         return ExpandChest(result, position, chest, mask, chestRadius);
     }
