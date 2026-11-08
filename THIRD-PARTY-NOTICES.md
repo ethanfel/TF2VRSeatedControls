@@ -1,3 +1,6 @@
+The add-on is distributed under GPL-3.0-only. The third-party components below
+retain their original copyright and license notices.
+
 The Northstar bootstrap and OpenXR layer registration code derive from
 [TF2VRBetterBindings](https://github.com/Fdrph/TF2VRBetterBindings), version 1.2.2,
 copyright (c) 2026 Nighteyes, MIT. See `licenses/BetterBindings-LICENSE.txt` in the

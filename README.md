@@ -39,4 +39,6 @@ See [BUILD.md](BUILD.md) for source builds and checks.
 
 Bootstrap code is adapted from Nighteyes' [TF2VRBetterBindings](https://github.com/Fdrph/TF2VRBetterBindings); native hooks use [MinHook](https://github.com/TsudaKageyu/minhook). See [third-party notices](THIRD-PARTY-NOTICES.md).
 
-MIT licensed. Unaffiliated with CircuitLord, Respawn, EA, or Northstar.
+Copyright (c) 2026 Ethanfel and contributors. Licensed under the [GNU General Public License, version 3 only](LICENSE) (`GPL-3.0-only`). Third-party components retain their original licenses; see the [third-party notices](THIRD-PARTY-NOTICES.md).
+
+Unaffiliated with CircuitLord, Respawn, EA, or Northstar.
