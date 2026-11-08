@@ -1,0 +1,19 @@
+{
+  "Name": "Local.TF2VRSeatedControls",
+  "Description": "Gameplay context for the separate TF2VR Seated Controls add-on.",
+  "Version": "0.2.3",
+  "LoadPriority": 4,
+  "Dependencies": { "TF2VR_COCKPIT": "Titanfall2VR.Cockpit" },
+  "ConVars": [
+    { "Name": "tf2vrsc_ui_ready", "DefaultValue": "0" },
+    { "Name": "tf2vrsc_player_ready", "DefaultValue": "0" },
+    { "Name": "tf2vrsc_heartbeat", "DefaultValue": "0" }
+  ],
+  "Scripts": [
+    {
+      "Path": "tf2vrsc_context.nut", "RunOn": "UI || CLIENT",
+      "UICallback": { "After": "TF2VRSC_ContextInit" },
+      "ClientCallback": { "After": "TF2VRSC_ContextInit" }
+    }
+  ]
+}

@@ -1,0 +1,9 @@
+build*/
+*.log
+*.dmp
+*.dll
+*.exe
+*.zip
+*.a
+*.pdb
+.vs/
